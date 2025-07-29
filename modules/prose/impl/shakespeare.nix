@@ -35,12 +35,12 @@
                                 default = [ ];
                               };
                               stdout = lib.mkOption {
-                                type = lib.types.str;
-                                default = "[\\s\\S]*";
+                                type = lib.types.nullOr lib.types.str;
+                                default = null;
                               };
                               stderr = lib.mkOption {
-                                type = lib.types.str;
-                                default = "[\\s\\S]*";
+                                type = lib.types.nullOr lib.types.str;
+                                default = null;
                               };
                             };
                           };
@@ -55,23 +55,36 @@
                     default = lib.pipe chapterArgs.config.contents [
                       (map (
                         piece:
-                        piece.markdown or (
-                          let
-                            inherit (piece) command;
-                            inherit (html) h;
-                          in
-                          with html.tags;
-                          h "command-" [
-                            (h "path" command.path_)
-                            (h "arguments" (map (h "argument") command.args))
-                            (h "output" [
-                              (p "Stdout:")
-                              (h "stdout" command.stdout)
-                              (p "Stderr:")
-                              (h "stderr" command.stderr)
-                            ])
-                          ]
-                        )
+                        if piece ? markdown then
+                          "\n${piece.markdown}\n"
+                        else
+                          (
+                            let
+                              inherit (piece) command;
+                              inherit (html) h;
+                            in
+                            with html.tags;
+                            div [
+                              (h "command-and-output" [
+                                (h "argv" [
+                                  (h "path" command.path_)
+                                  (h "arguments" (map (h "argument") command.args))
+                                ])
+                                (h "output" (
+                                  (lib.optionals (command.stdout != null) [
+                                    (h "stream" "stdout")
+                                    ":"
+                                    (h "stdout" command.stdout)
+                                  ])
+                                  ++ (lib.optionals (command.stderr != null) [
+                                    (h "stream" "stderr")
+                                    ":"
+                                    (h "stderr" command.stderr)
+                                  ])
+                                ))
+                              ])
+                            ]
+                          )
                       ))
                       html.render
                     ];
@@ -115,8 +128,26 @@
             pkgs.writeText "shakespeare.css"
               # css
               ''
-                command- {
+                command-and-output {
                   display: block;
+                  border-inline-start: 1px dashed;
+                  padding-inline-start: 1em;
+                }
+                stream {
+                }
+                argv {
+                  display: block;
+                  font-family: monospace;
+                }
+                argv::before {
+                  display: inline;
+                  content: '$ ';
+                }
+                argv path, argv argument {
+                  border-block-end: 1px dotted;
+                }
+                argument {
+                  margin-inline-start: 1ch;
                 }
               '';
           chapterFiles = lib.pipe cfg.chapters [

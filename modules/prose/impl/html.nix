@@ -22,17 +22,17 @@
             if lib.isString node then
               node
             else
-              (lib.concatLines [
+              (lib.concatStrings [
                 "<${node.tag}>"
                 (render node.childNodes)
                 "</${node.tag}>"
               ])
           ))
-          lib.concatLines
+          lib.concatStrings
         ];
     in
     {
       inherit h render;
-      tags = lib.genAttrs [ "p" ] h;
+      tags = lib.genAttrs [ "p" "div" ] h;
     };
 }
