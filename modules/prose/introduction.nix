@@ -1,8 +1,13 @@
 {
-  perSystem.prose.chapters.introduction = [
-    # markdown
-    ''
-      Presumably, an introduction here
-    ''
-  ];
+  perSystem.prose.chapters.introduction = {
+    title = "Introduction";
+    contents = [
+      {
+        markdown = # markdown
+          ''
+            Presumably, an introduction here
+          '';
+      }
+    ];
+  };
 }
