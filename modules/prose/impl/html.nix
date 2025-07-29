@@ -33,6 +33,6 @@
     in
     {
       inherit h render;
-      tags = lib.genAttrs [ "p" "div" ] h;
+      tags = lib.genAttrs [ "ul" "li" "pre" "p" "div" ] h;
     };
 }

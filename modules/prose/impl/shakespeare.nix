@@ -27,7 +27,7 @@
                       lib.types.attrTag {
                         markdown = lib.mkOption { type = lib.types.str; };
                         command = lib.mkOption {
-                          type = lib.types.submodule {
+                          type = lib.types.submodule (commandArgs: {
                             options = {
                               path_ = lib.mkOption { type = lib.types.str; };
                               args = lib.mkOption {
@@ -35,15 +35,16 @@
                                 default = [ ];
                               };
                               stdout = lib.mkOption {
-                                type = lib.types.nullOr lib.types.str;
+                                type = lib.types.nullOr (
+                                  lib.types.attrTag {
+                                    includes = lib.mkOption { type = lib.types.str; };
+                                  }
+                                );
                                 default = null;
                               };
-                              stderr = lib.mkOption {
-                                type = lib.types.nullOr lib.types.str;
-                                default = null;
-                              };
+                              stderr = commandArgs.options.stdout;
                             };
-                          };
+                          });
                         };
                       }
                     );
@@ -70,17 +71,24 @@
                                   (h "path" command.path_)
                                   (h "arguments" (map (h "argument") command.args))
                                 ])
-                                (h "output" (
-                                  (lib.optionals (command.stdout != null) [
-                                    (h "stream" "stdout")
-                                    ":"
-                                    (h "stdout" command.stdout)
-                                  ])
-                                  ++ (lib.optionals (command.stderr != null) [
-                                    (h "stream" "stderr")
-                                    ":"
-                                    (h "stderr" command.stderr)
-                                  ])
+                                (ul (
+                                  lib.pipe
+                                    [ "stdout" "stderr" ]
+                                    [
+                                      (map (stream: {
+                                        inherit stream;
+                                        condition = command.${stream};
+                                      }))
+                                      (lib.filter ({ condition, ... }: condition != null))
+                                      (map (
+                                        { stream, condition }:
+                                        li [
+                                          (h "stream-name" stream)
+                                          " includes:"
+                                          (pre [ condition.includes ])
+                                        ]
+                                      ))
+                                    ]
                                 ))
                               ])
                             ]
@@ -133,7 +141,8 @@
                   border-inline-start: 1px dashed;
                   padding-inline-start: 1em;
                 }
-                stream {
+                stream-name {
+                  font-family: monospace;
                 }
                 argv {
                   display: block;

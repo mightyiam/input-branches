@@ -16,7 +16,7 @@
             "init"
             "project"
           ];
-          stderr = ''Initialized blank git repository in project'';
+          stderr.includes = "Initialized git repository in something something";
         };
       }
     ];
