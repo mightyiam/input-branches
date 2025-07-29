@@ -11,7 +11,7 @@
       }
       {
         command = {
-          cmd = "git";
+          path_ = "git";
           args = [
             "init"
             "project"

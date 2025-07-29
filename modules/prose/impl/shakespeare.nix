@@ -1,4 +1,4 @@
-{ lib, ... }:
+{ lib, html, ... }:
 {
   perSystem =
     psArgs@{ pkgs, ... }:
@@ -29,10 +29,14 @@
                         command = lib.mkOption {
                           type = lib.types.submodule {
                             options = {
-                              cmd = lib.mkOption { type = lib.types.str; };
+                              path_ = lib.mkOption { type = lib.types.str; };
                               args = lib.mkOption {
                                 type = lib.types.listOf lib.types.str;
                                 default = [ ];
+                              };
+                              stdout = lib.mkOption {
+                                type = lib.types.str;
+                                default = "[\\s\\S]*";
                               };
                               stderr = lib.mkOption {
                                 type = lib.types.str;
@@ -51,13 +55,25 @@
                     default = lib.pipe chapterArgs.config.contents [
                       (map (
                         piece:
-                        piece.markdown or ''
-                          ```
-                          $ ${piece.command.cmd} ${lib.concatStringsSep " " piece.command.args}
-                          ```
-                        ''
+                        piece.markdown or (
+                          let
+                            inherit (piece) command;
+                            inherit (html) h;
+                          in
+                          with html.tags;
+                          h "command" [
+                            (h "path" command.path_)
+                            (h "arguments" (map (h "argument") command.args))
+                            (h "output" [
+                              (p "Stdout:")
+                              (h "stdout" command.stdout)
+                              (p "Stderr:")
+                              (h "stderr" command.stderr)
+                            ])
+                          ]
+                        )
                       ))
-                      lib.concatLines
+                      html.render
                     ];
                   };
                 };

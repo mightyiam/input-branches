@@ -29,7 +29,8 @@
         imports = [
           ./modules/flake-module.nix
           ./modules/nixos-module.nix
-          ./modules/prose/implementation.nix
+          ./modules/prose/impl/html.nix
+          ./modules/prose/impl/shakespeare.nix
           ./modules/prose/introduction.nix
           ./modules/prose/order.nix
           ./modules/prose/tutorial.nix
