@@ -61,7 +61,7 @@
                             inherit (html) h;
                           in
                           with html.tags;
-                          h "command" [
+                          h "command-" [
                             (h "path" command.path_)
                             (h "arguments" (map (h "argument") command.args))
                             (h "output" [
@@ -94,6 +94,11 @@
           internal = true;
           readOnly = true;
         };
+        css = lib.mkOption {
+          type = lib.types.package;
+          internal = true;
+          readOnly = true;
+        };
         chapterFiles = lib.mkOption {
           type = lib.types.package;
           internal = true;
@@ -104,7 +109,16 @@
         prose = {
           bookToml = pkgs.writers.writeTOML "book.toml" {
             build.create-missing = false;
+            output.html.additional-css = [ cfg.css.name ];
           };
+          css =
+            pkgs.writeText "shakespeare.css"
+              # css
+              ''
+                command- {
+                  display: block;
+                }
+              '';
           chapterFiles = lib.pipe cfg.chapters [
             lib.attrValues
             (map (chapter: pkgs.writeTextDir "${chapter.name}.md" chapter.rendered))
@@ -126,6 +140,7 @@
         packages.prose = pkgs.runCommand "write-prose" { nativeBuildInputs = [ pkgs.mdbook ]; } ''
           mkdir src
           ln -s ${cfg.bookToml} book.toml
+          ln -s ${cfg.css} ${cfg.css.name}
           for file in ${cfg.chapterFiles}/*; do ln -s "$file" src; done
           ln -s ${cfg.summary} src/SUMMARY.md
           mdbook build --dest-dir $out
