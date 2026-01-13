@@ -24,6 +24,14 @@
     {
       options = {
         input-branches = {
+          repoPath = lib.mkOption {
+            type = lib.types.str;
+            description = ''
+              Path to the Git repository root.
+              If not set, it is determined automatically.
+            '';
+            default = "./.";
+          };
           baseDir = lib.mkOption {
             type = lib.types.str;
             description = ''
@@ -232,35 +240,34 @@
                           pkgs.git
                           get-input-branch
                         ];
-                        text =
-                          ''
-                            set -o xtrace
-                            ${cdToplevel}
+                        text = ''
+                          set -o xtrace
+                          ${cdToplevel}
 
-                            git submodule add ./. "${path_}"
-                            branch="$(get-input-branch)"
-                            (
-                              cd "${path_}"
-                              ${ensure-upstream}
-                              git fetch ${lib.optionalString shallow "--depth 1"} ${upstream.name} "${inputs.${name}.rev}"
-                          ''
-                          + (
-                            if shallow then
-                              ''
-                                git switch --orphan "$branch"
-                                git checkout "${inputs.${name}.rev}" .
-                                git add .
-                                git commit --message "squashed upstream ${inputs.${name}.rev}"
-                              ''
-                            else
-                              ''
-                                git switch --create "$branch" "${inputs.${name}.rev}"
-                              ''
+                          git submodule add "${cfg.repoPath}" "${path_}"
+                          branch="$(get-input-branch)"
+                          (
+                            cd "${path_}"
+                            ${ensure-upstream}
+                            git fetch ${lib.optionalString shallow "--depth 1"} ${upstream.name} "${inputs.${name}.rev}"
+                        ''
+                        + (
+                          if shallow then
+                            ''
+                              git switch --orphan "$branch"
+                              git checkout "${inputs.${name}.rev}" .
+                              git add .
+                              git commit --message "squashed upstream ${inputs.${name}.rev}"
+                            ''
+                          else
+                            ''
+                              git switch --create "$branch" "${inputs.${name}.rev}"
+                            ''
+                        )
+                        + ''
                           )
-                          + ''
-                            )
-                            git config --file .gitmodules submodule.${path_}.url "./."
-                          '';
+                          git config --file .gitmodules submodule.${path_}.url "${cfg.repoPath}"
+                        '';
                       })
                     else
                       null;
@@ -271,45 +278,44 @@
                       pkgs.git
                       get-input-branch
                     ];
-                    text =
-                      ''
-                        set -o xtrace
-                        ${cdToplevel}
-                        branch="$(get-input-branch)"
-                        cd "${path_}"
-                        if [ -n "$(git status --porcelain)" ]; then
-                          exit 70
-                        fi
-                        ${ensure-upstream}
-                        git fetch ${lib.optionalString shallow "--depth 1"} ${upstream.name} "${upstream.ref}"
-                        git fetch ${remoteName} "$branch"
-                      ''
-                      + (
-                        if shallow then
-                          lib.concatLines [
-                            ''
-                              git switch --orphan _input-branches-temp
-                              git checkout "${upstream.name}/${upstream.ref}" .
-                              git add .
-                              git commit --message "squashed upstream $(git rev-parse "${upstream.name}/${upstream.ref}")"
-                              git switch "$branch"
-                            ''
-                            # If this is replaced with a naive `git rebase _input-branches-temp`,
-                            # tests might still pass, but in actual usage a failure has been observed,
-                            # which I have failed to reproduce in tests.
-                            ''
-                              git rebase --onto=_input-branches-temp "$(git rev-list --max-parents=0 HEAD)" HEAD
-                              git branch --force "$branch" HEAD
-                              git switch "$branch"
-                              git branch --delete --force _input-branches-temp
-                            ''
-                          ]
-                        else
+                    text = ''
+                      set -o xtrace
+                      ${cdToplevel}
+                      branch="$(get-input-branch)"
+                      cd "${path_}"
+                      if [ -n "$(git status --porcelain)" ]; then
+                        exit 70
+                      fi
+                      ${ensure-upstream}
+                      git fetch ${lib.optionalString shallow "--depth 1"} ${upstream.name} "${upstream.ref}"
+                      git fetch ${remoteName} "$branch"
+                    ''
+                    + (
+                      if shallow then
+                        lib.concatLines [
                           ''
+                            git switch --orphan _input-branches-temp
+                            git checkout "${upstream.name}/${upstream.ref}" .
+                            git add .
+                            git commit --message "squashed upstream $(git rev-parse "${upstream.name}/${upstream.ref}")"
                             git switch "$branch"
-                            git rebase "${upstream.name}/${upstream.ref}"
                           ''
-                      );
+                          # If this is replaced with a naive `git rebase _input-branches-temp`,
+                          # tests might still pass, but in actual usage a failure has been observed,
+                          # which I have failed to reproduce in tests.
+                          ''
+                            git rebase --onto=_input-branches-temp "$(git rev-list --max-parents=0 HEAD)" HEAD
+                            git branch --force "$branch" HEAD
+                            git switch "$branch"
+                            git branch --delete --force _input-branches-temp
+                          ''
+                        ]
+                      else
+                        ''
+                          git switch "$branch"
+                          git rebase "${upstream.name}/${upstream.ref}"
+                        ''
+                    );
                   };
 
                   push-force = pkgs.writeShellApplication {
